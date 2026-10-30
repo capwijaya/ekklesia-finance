@@ -1,0 +1,6 @@
+{
+  "name": "Aplikasi Manajemen Keuangan Gereja & ISAK 35",
+  "description": "Sistem informasi pengelolaan keuangan gereja terintegrasi Google Spreadsheet, kepatuhan ISAK 35, kontrol peran, dan cetak laporan jemaat.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
