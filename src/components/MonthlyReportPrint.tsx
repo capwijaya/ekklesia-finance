@@ -52,7 +52,11 @@ export const MonthlyReportPrint: React.FC<MonthlyReportPrintProps> = ({
   }, {} as Record<string, number>);
 
   const handlePrint = () => {
-    window.print();
+    try {
+      window.print();
+    } catch (err) {
+      console.warn('Pencetakan tidak didukung di lingkungan frame:', err);
+    }
   };
 
   const handleExportCSV = () => {

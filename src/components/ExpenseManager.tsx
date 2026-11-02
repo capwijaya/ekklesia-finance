@@ -69,17 +69,21 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [activeReceiptModal, setActiveReceiptModal] = useState<ExpenseTransaction | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   const handleNominalChange = (valStr: string) => {
     const rawNumber = parseInt(valStr.replace(/\D/g, ''), 10) || 0;
     setNominal(rawNumber);
     setNominalInput(rawNumber > 0 ? new Intl.NumberFormat('id-ID').format(rawNumber) : '');
+    if (formError) setFormError(null);
   };
 
   const handleQuickAddNominal = (amount: number) => {
     const newTotal = nominal + amount;
     setNominal(newTotal);
     setNominalInput(new Intl.NumberFormat('id-ID').format(newTotal));
+    if (formError) setFormError(null);
   };
 
   // Map category to default ISAK 35 expense classification
@@ -113,7 +117,7 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!nominal || nominal <= 0) {
-      alert('Mohon masukkan nominal pengeluaran yang valid.');
+      setFormError('Mohon masukkan nominal pengeluaran yang valid.');
       return;
     }
 
@@ -142,6 +146,7 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({
     setPenerima('');
     setNomorBukti('');
     setNotaUrl('');
+    setFormError(null);
     setShowAddForm(false);
   };
 
@@ -204,6 +209,12 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({
             </h4>
             <span className="text-xs text-slate-400">Petugas: {userName}</span>
           </div>
+
+          {formError && (
+            <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs font-semibold">
+              {formError}
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-xs sm:text-sm">
             {/* Tanggal */}
@@ -524,17 +535,7 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({
                     {isAuthorized && (
                       <td className="py-3 px-4 text-center whitespace-nowrap">
                         <button
-                          onClick={() => {
-                            if (
-                              window.confirm(
-                                `Hapus pengeluaran ${exp.nomorBukti} (${formatRupiah(
-                                  exp.nominal
-                                )})?`
-                              )
-                            ) {
-                              onDeleteExpense(exp.id);
-                            }
-                          }}
+                          onClick={() => setDeleteConfirmId(exp.id)}
                           className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors"
                           title="Hapus data"
                         >
@@ -637,6 +638,39 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({
                 className="px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl text-xs sm:text-sm font-semibold"
               >
                 Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal for Delete */}
+      {deleteConfirmId && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4">
+            <h4 className="font-bold text-slate-900 dark:text-white text-base">
+              Konfirmasi Hapus Pengeluaran
+            </h4>
+            <p className="text-xs text-slate-500">
+              Apakah Anda yakin ingin menghapus data pengeluaran ini? Tindakan ini tidak dapat dibatalkan.
+            </p>
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmId(null)}
+                className="px-3.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onDeleteExpense(deleteConfirmId);
+                  setDeleteConfirmId(null);
+                }}
+                className="px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-xs"
+              >
+                Hapus Sekarang
               </button>
             </div>
           </div>
