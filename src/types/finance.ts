@@ -7,6 +7,9 @@ export interface UserProfile {
   role: UserRole;
   avatar?: string;
   title?: string;
+  password?: string;
+  pin?: string;
+  lastLogin?: string;
 }
 
 // ISAK 35 Net Asset Restriction Classification

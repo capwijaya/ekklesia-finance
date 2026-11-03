@@ -5,9 +5,15 @@ import {
   BudgetItem,
   ChurchInfo,
   SheetsSyncState,
+  UserRole,
 } from '../types/finance';
 import { formatRupiah, formatTanggalIndo } from '../utils/formatters';
 import { FinanceCharts } from './FinanceCharts';
+import { BudgetBreakdownChart } from './BudgetBreakdownChart';
+import { BudgetAlertNotification } from './BudgetAlertNotification';
+import { UnsyncedIncomeNotification } from './UnsyncedIncomeNotification';
+import { IncomeExpenseTrendChart } from './IncomeExpenseTrendChart';
+import { AnnualIncomeExpenseBarChart } from './AnnualIncomeExpenseBarChart';
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -31,6 +37,9 @@ interface DashboardProps {
   syncState: SheetsSyncState;
   onNavigateTab: (tab: string) => void;
   selectedMonth: string;
+  userRole?: UserRole;
+  onSyncIncomes?: (incomeIds?: string[]) => void;
+  onSimulateUnsyncedIncome?: () => void;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
@@ -41,6 +50,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
   syncState,
   onNavigateTab,
   selectedMonth,
+  userRole = 'bendahara',
+  onSyncIncomes,
+  onSimulateUnsyncedIncome,
 }) => {
   // Aggregate calculations
   const totalIncome = incomes.reduce((sum, i) => sum + i.nominal, 0);
@@ -143,6 +155,29 @@ export const Dashboard: React.FC<DashboardProps> = ({
         {/* Decorative background glow */}
         <div className="absolute right-0 top-0 -mt-10 -mr-10 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
       </div>
+
+      {/* Unsynced Incomes (>24h) Reminder Notification for Treasurer */}
+      <UnsyncedIncomeNotification
+        incomes={incomes}
+        userRole={userRole}
+        onNavigateTab={onNavigateTab}
+        onSyncIncomes={onSyncIncomes}
+        onSimulateUnsyncedIncome={onSimulateUnsyncedIncome}
+      />
+
+      {/* Budget Over-90% Spending Alert Notification */}
+      <BudgetAlertNotification
+        budgets={budgets}
+        expenses={expenses}
+        selectedMonth={selectedMonth}
+        onNavigateToExpense={() => onNavigateTab('expense')}
+        onScrollToCharts={() => {
+          const el = document.getElementById('budget-breakdown-section');
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth' });
+          }
+        }}
+      />
 
       {/* Real-time KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -327,7 +362,29 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
       </div>
 
-      {/* Visual Analytics: Bar Chart & Pie Charts (Grafik 饼/Bar Anggaran & Realisasi) */}
+      {/* Recharts Visual Component: Budget vs Actual Breakdown & Remaining Funds */}
+      <BudgetBreakdownChart
+        budgets={budgets}
+        expenses={expenses}
+        selectedMonth={selectedMonth}
+      />
+
+      {/* Recharts Visual Component: Annual & Year-to-Date (YTD) Income vs Expense Bar Chart */}
+      <AnnualIncomeExpenseBarChart
+        incomes={incomes}
+        expenses={expenses}
+        selectedMonth={selectedMonth}
+        onNavigateToReport={() => onNavigateTab('isak35')}
+      />
+
+      {/* Recharts Visual Component: 6-Month Income vs Expense Trend Line Chart */}
+      <IncomeExpenseTrendChart
+        incomes={incomes}
+        expenses={expenses}
+        selectedMonth={selectedMonth}
+      />
+
+      {/* Visual Analytics: Proporsi Sumber Pemasukan & Pengeluaran */}
       <FinanceCharts
         incomes={incomes}
         expenses={expenses}

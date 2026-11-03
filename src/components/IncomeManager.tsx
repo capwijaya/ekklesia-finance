@@ -18,11 +18,15 @@ import {
   Calendar,
   Layers,
   Sparkles,
+  X,
+  FileSpreadsheet,
 } from 'lucide-react';
+import { CsvImportModal } from './CsvImportModal';
 
 interface IncomeManagerProps {
   incomes: IncomeTransaction[];
   onAddIncome: (income: Omit<IncomeTransaction, 'id' | 'createdBy'>) => void;
+  onBulkAddIncomes?: (incomes: Omit<IncomeTransaction, 'id' | 'createdBy'>[]) => void;
   onDeleteIncome: (id: string) => void;
   userRole: UserRole;
   userName: string;
@@ -42,11 +46,13 @@ const CATEGORIES: IncomeCategory[] = [
 export const IncomeManager: React.FC<IncomeManagerProps> = ({
   incomes,
   onAddIncome,
+  onBulkAddIncomes,
   onDeleteIncome,
   userRole,
   userName,
 }) => {
   const isAuthorized = userRole === 'admin' || userRole === 'bendahara';
+  const [showCsvModal, setShowCsvModal] = useState(false);
 
   // Form states
   const [showAddForm, setShowAddForm] = useState(false);
@@ -121,13 +127,32 @@ export const IncomeManager: React.FC<IncomeManagerProps> = ({
     setShowAddForm(false);
   };
 
-  // Filter incomes
+  // Filter incomes by keterangan, nominal, nama jemaat, jenis, and ID
   const filteredIncomes = incomes.filter((item) => {
+    const query = searchTerm.trim().toLowerCase();
+
+    // Check if query matches nominal (supports raw digits, formatted currency e.g. 500.000, and partial numbers)
+    const matchNominal = (): boolean => {
+      if (!query) return false;
+      const rawNominalStr = item.nominal.toString();
+      const formattedNominal = formatRupiah(item.nominal).toLowerCase();
+      const cleanDigits = query.replace(/[^\d]/g, '');
+
+      if (rawNominalStr.includes(query)) return true;
+      if (formattedNominal.includes(query)) return true;
+      if (cleanDigits.length >= 2 && rawNominalStr.includes(cleanDigits)) return true;
+      return false;
+    };
+
     const matchSearch =
-      item.keterangan.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.jenisPersembahan.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (item.namaJemaat && item.namaJemaat.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      item.id.toLowerCase().includes(searchTerm.toLowerCase());
+      !query ||
+      item.keterangan.toLowerCase().includes(query) ||
+      (item.namaJemaat && item.namaJemaat.toLowerCase().includes(query)) ||
+      item.jenisPersembahan.toLowerCase().includes(query) ||
+      item.metode.toLowerCase().includes(query) ||
+      item.ibadah.toLowerCase().includes(query) ||
+      item.id.toLowerCase().includes(query) ||
+      matchNominal();
 
     const matchCategory =
       filterCategory === 'all' || item.jenisPersembahan === filterCategory;
@@ -152,13 +177,22 @@ export const IncomeManager: React.FC<IncomeManagerProps> = ({
         </div>
 
         {isAuthorized ? (
-          <button
-            onClick={() => setShowAddForm(!showAddForm)}
-            className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs sm:text-sm flex items-center gap-2 shadow-sm transition-all"
-          >
-            <Plus className="w-4 h-4" />
-            {showAddForm ? 'Tutup Form' : 'Input Pemasukan Baru'}
-          </button>
+          <div className="flex flex-wrap items-center gap-2.5">
+            <button
+              onClick={() => setShowCsvModal(true)}
+              className="px-3.5 py-2.5 rounded-xl border border-emerald-300 dark:border-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-semibold text-xs sm:text-sm flex items-center gap-2 shadow-xs transition-all cursor-pointer"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              Impor CSV Massal
+            </button>
+            <button
+              onClick={() => setShowAddForm(!showAddForm)}
+              className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs sm:text-sm flex items-center gap-2 shadow-sm transition-all cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              {showAddForm ? 'Tutup Form' : 'Input Pemasukan Baru'}
+            </button>
+          </div>
         ) : (
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 text-xs font-medium">
             <Lock className="w-3.5 h-3.5" />
@@ -362,41 +396,94 @@ export const IncomeManager: React.FC<IncomeManagerProps> = ({
         </form>
       )}
 
-      {/* Filter & Search Bar */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xs flex flex-col md:flex-row gap-3 items-center justify-between">
-        <div className="relative w-full md:w-80">
-          <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Cari transaksi, jemaat, atau nomor..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-indigo-500"
-          />
-        </div>
-
-        <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end">
-          <div className="flex items-center gap-2 text-xs">
-            <Filter className="w-3.5 h-3.5 text-slate-400" />
-            <select
-              value={filterCategory}
-              onChange={(e) => setFilterCategory(e.target.value)}
-              className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-indigo-500 text-xs"
-            >
-              <option value="all">Semua Jenis Persembahan</option>
-              {CATEGORIES.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
-                </option>
-              ))}
-            </select>
+      {/* Enhanced Filter & Search Bar */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xs space-y-3">
+        <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
+          {/* Main Search Input */}
+          <div className="relative flex-1">
+            <Search className="w-4 h-4 absolute left-3.5 top-3.5 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Cari keterangan, nominal (cth: 500.000 atau 500000), atau nama jemaat..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-9 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-emerald-500 transition-all"
+            />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => setSearchTerm('')}
+                title="Hapus kata kunci"
+                className="absolute right-3 top-3 p-0.5 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
 
-          <div className="text-right text-xs">
-            <span className="text-slate-400">Total Filter:</span>{' '}
-            <strong className="text-emerald-600 dark:text-emerald-400 text-sm">
-              {formatRupiah(totalFilteredIncome)}
-            </strong>
+          {/* Category Filter & Stats */}
+          <div className="flex items-center gap-3 shrink-0 justify-between md:justify-end">
+            <div className="flex items-center gap-2 text-xs">
+              <Filter className="w-3.5 h-3.5 text-slate-400" />
+              <select
+                value={filterCategory}
+                onChange={(e) => setFilterCategory(e.target.value)}
+                className="px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-emerald-500 text-xs cursor-pointer"
+              >
+                <option value="all">Semua Jenis Persembahan</option>
+                {CATEGORIES.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="text-right text-xs">
+              <span className="text-slate-400">Total Filter:</span>{' '}
+              <strong className="text-emerald-600 dark:text-emerald-400 text-sm">
+                {formatRupiah(totalFilteredIncome)}
+              </strong>
+            </div>
+          </div>
+        </div>
+
+        {/* Quick Search Chips & Filter Status Summary */}
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-500">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-slate-400 font-medium">Pencarian cepat:</span>
+            {['Persepuluhan', 'Kolekte', 'QRIS', 'Syukur', 'Pembangunan', 'Kas Kecil'].map((chip) => (
+              <button
+                key={chip}
+                type="button"
+                onClick={() => setSearchTerm(searchTerm === chip ? '' : chip)}
+                className={`px-2 py-0.5 rounded-lg border transition-all cursor-pointer ${
+                  searchTerm === chip
+                    ? 'bg-emerald-600 text-white border-emerald-600 font-bold'
+                    : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300'
+                }`}
+              >
+                {chip}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-1.5 font-medium">
+            <span>
+              Menampilkan <strong>{filteredIncomes.length}</strong> dari {incomes.length} data
+            </span>
+            {(searchTerm || filterCategory !== 'all') && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchTerm('');
+                  setFilterCategory('all');
+                }}
+                className="text-emerald-600 dark:text-emerald-400 hover:underline font-bold ml-1.5 cursor-pointer"
+              >
+                Reset Filter
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -523,6 +610,22 @@ export const IncomeManager: React.FC<IncomeManagerProps> = ({
           </div>
         </div>
       )}
+
+      {/* Csv Import Modal */}
+      <CsvImportModal
+        isOpen={showCsvModal}
+        onClose={() => setShowCsvModal(false)}
+        defaultType="income"
+        onImportIncomes={(importedIncomes) => {
+          if (onBulkAddIncomes) {
+            onBulkAddIncomes(importedIncomes);
+          } else {
+            importedIncomes.forEach(onAddIncome);
+          }
+        }}
+        onImportExpenses={() => {}}
+        userName={userName}
+      />
     </div>
   );
 };

@@ -166,6 +166,13 @@ export const RoleManagerModal: React.FC<RoleManagerModalProps> = ({
                     <p className="text-xs text-slate-500 max-w-lg">
                       {roleDef?.description}
                     </p>
+                    <div className="text-[11px] text-indigo-600 dark:text-indigo-400 font-mono flex items-center gap-2 pt-0.5">
+                      <span>Email: {user.email}</span>
+                      <span>•</span>
+                      <span>Sandi: {user.password || '1234'}</span>
+                      <span>•</span>
+                      <span>PIN: {user.pin || '1234'}</span>
+                    </div>
                   </div>
 
                   <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
